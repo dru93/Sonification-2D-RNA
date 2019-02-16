@@ -57,4 +57,4 @@ This MIDI information dictates the sounds that will play depending on the RNA se
 4. Playback MIDI info
 5. Record/explore audio
 
-![Pure data patch](/images/pdPatch.png)
+![Pure data patch](/images/pdPatch.PNG)
