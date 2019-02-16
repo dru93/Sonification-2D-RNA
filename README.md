@@ -4,7 +4,7 @@ Pure Data and Ableton Live are optionally required. Check:
 - [https://puredata.info](https://puredata.info/)
 - [https://www.ableton.com](https://www.ableton.com/)
 
-Also, a (virtual) MIDI port has to be available in the machine running these scripts.
+Also, a (virtual) MIDI port is optionally required.
 
 ### Using virtual MIDI buses
 
@@ -22,11 +22,13 @@ This MIDI information dictates the sounds that will play depending on the RNA se
 
 ## Steps to do if you wanna hear any sounds
 
-1. Open Pure Data and load the `read-midi-port.pd` patch, or open Ableton Live and load the template (optional)
+1. Open Pure Data and load `sonification-template.pd`, or open Ableton Live and load `sonification-template.als`
 
-2. Run `createMIDIclip.py` to create a random  RNA secondary structure in CSSD format (`randomRNA.py` is called) and create a MIDI file containing information concerning how the sonnified RNA should sound like.
-3. If steps 1 and 2 were bypassed but still wanna hear something, import the .mid files generated in the previous step here: [https://onlinesequencer.net/import](https://onlinesequencer.net/import)
+2. Run `python createMID.py` in a terminal. If there are no input arguments, a random  RNA secondary structure in CSSD format will be created (`randomRNA.py` is called), else you can input as an argument any specific .txt file located in the 'RNA structures' directory you want to sonify. A MIDI file containing information concerning how the sonnified RNA should sound like will be saved. The same MIDI information will also be passed through any open MIDI ports.
 
+
+3. If step 1 was bypassed but still wanna hear something, import the .mid files generated in the previous step here: [https://onlinesequencer.net/import](https://onlinesequencer.net/import)
+   
 ## Audio mappings
 
 ### Pitch frequency
@@ -49,7 +51,7 @@ This MIDI information dictates the sounds that will play depending on the RNA se
   
 - Reverb: Depending on index distance from structure center
 
-## Pure Data patch actions
+## Pure Data patch
 
 1. Record MIDI
 2. Store MIDI info in arrays
