@@ -9,10 +9,7 @@ Structure is in dot-bracket, consensus secondary structure descriptor (CSSD) for
 '-': interior loop (or bulge)
 '''
 
-import mido
-import time
 import random
-
 
 # fills in fully unpaired (',') structure with a hairpin loop, base pairs and interior loops
 # in case of assymetry, leaves an unpaired nucleotide
@@ -76,6 +73,9 @@ def addUnpairedNucl(structure, numberOfUnpairedNucl):
     return (structure)
 
 def addPseudoknot(structure, numberOfPKs):
+    if numberOfPKs == 0:
+        return (structure)
+        
     numberOfNucl = len(structure)
     # find 1st loop indices
     loopIndices = []
@@ -114,9 +114,6 @@ def addPseudoknot(structure, numberOfPKs):
     print('Added pseudoknot')
     return (structure)
 
-def addUnstructuredNucl(structure):
-    return (structure)
-
 # creates a random RNA structure with determined number of nucleotides and hairpin loops
 def createRandomRNAstructure(numberOfNucl, numberOfLoops):
     # set probability of adding extra unpaired nucleotides to ~0.14 (1/7)
@@ -128,6 +125,7 @@ def createRandomRNAstructure(numberOfNucl, numberOfLoops):
         numberOfNucl -= numberOfUnpairedNucl
 
     #  will a pseudoknot be added?
+    numberOfPKs = 0
     if numberOfLoops > 1:
         # set probability of adding a pseudoknot to 0.5 (5/10)  
         willAddPKs = round(random.randint(1,10)/10, 0)
@@ -186,13 +184,9 @@ def createRandomRNAstructure(numberOfNucl, numberOfLoops):
     if willAddUnpairedNucl:
         structure = addUnpairedNucl(structure, numberOfUnpairedNucl)
     
-    # add pseudoknots tto the sequence
+    # add pseudoknots to the sequence
     if numberOfLoops > 1:
-        if willAddPKs:
-            structure = addPseudoknot(structure, numberOfPKs)
-    
-    # add unstructured nucleotides to the sequence
-    structure = addUnstructuredNucl(structure)
+        structure = addPseudoknot(structure, numberOfPKs)
 
     # convert it to string and print messages
     strStructure = ''.join(structure)
@@ -216,16 +210,16 @@ def findDistances(structure):
         # find next center
         for index in range(nextPartStartIndex, len(structure) - 1):
             if structure[index] == '<' or structure[index] == ')':
-                center = index - 1
+                center = index
                 if structure[index] == ')':
                     foundEnd = True
                 break
-        
+
         # fill till first paired nucleotides of next branch or end helix is found
         for index in range(nextPartStartIndex, len(structure) - 1):
             if not foundEnd:
-                # keep previous distance if hairpin loop
-                if structure[index] == '_':
+                # keep previous distance if hairpin or internal loop or pseudoknot
+                if structure[index] == '_' or structure[index] == '[' or structure[index] == ']':
                     distances[index] = prevDistance
                     # break if found loop
                     if structure[index + 1] != '_':
@@ -240,7 +234,7 @@ def findDistances(structure):
                 distances[index] = abs(index - center)
                 prevDistance = distances[index]
 
-    # fill in last one
+    # # fill in last one
     distances[len(structure)-1] = prevDistance + 1
 
     # remap to 0-127 values (in order to comply with midi messages)

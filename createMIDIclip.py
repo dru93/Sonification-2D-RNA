@@ -1,18 +1,20 @@
 '''
-Create a random RNA structure.
-Structure is in dot-bracket, consensus secondary structure descriptor (CSSD) format as follows:
+Input arguments: filename of RNA structure to sonify
+-Create MIDI data to sonify the generated structure
 
-'(' and ')': helices closing a multi-branched structure
-'<' and '>': base pairs of a terminal stem structure
-',': unpaired nucleotides in multi-branch loops
-'_': hairpin loop
-'-': interior loop (or bulge)
-
-Then create MIDI file to Sonify the generated structure
+MIDI port channels (0-16) routing:
+0: main melody pitch, midi CCs
+1: pseudoknots pitch
+2: steady pulse
+3: main melody velocity
+4: pseudoknots melody velocity
 '''
 
+import os
+import sys
 import mido
 import time
+import math
 import random
 import randomRNA
 
@@ -45,6 +47,17 @@ def transposeScale(l, step):
 
 # adds a note to midi track
 def inputNote(notes, note, octave, noteLength, willNotePlay, intervals, sendToPort):
+
+    # send pulse
+    if sendToPort:
+        port.send(mido.Message('note_on', note = 60, channel = 2))
+    
+    # send main melody velocity to channel 3
+    if willNotePlay:
+        port.send(mido.Message('note_on', velocity = 127, channel = 3))
+    else:
+        port.send(mido.Message('note_off', velocity = 0, channel = 3))
+
     if willNotePlay:
         noteToInput = min(note + octave*12, 127)
 
@@ -125,7 +138,7 @@ def sendQuickMessage(message, port):
 # initialize midi track, midi file and midi port
 def initializeMido():
 
-    sendToPort = float(input('Select live playspeed to midi port in seconds per note (float from 0 to 1): '))
+    sendToPort = 0.01 # float(input('Select live playspeed to midi port in seconds per note (float from 0 to 1): '))
 
     # create midi track
     midiTrack = mido.MidiTrack()
@@ -141,32 +154,85 @@ def initializeMido():
         port = 'loopMIDI Port 1'
         # if that port is not available
         while port not in mido.get_output_names():
-            print('Select one of the following ports available to send midi data:')
+            print('Select one of the following ports available to send MIDI data:')
             print(mido.get_output_names())
             port = input()
-        print ('Succesfully opened midi port')
         port = mido.open_output(port)
     
     return (sendToPort, midiTrack, port, theMidiFile)
 
-if __name__ == "__main__":
+# find distance between min and max notes played
+def findMaxNoteDistance(wuss):
+    maxDist = 0
+    dist = 0
+    notesNum = len(wuss)
+    for index in range(notesNum):
+        if wuss[index] == '(' or wuss[index] == '<':
+            dist += 1
+        elif wuss[index] == ')' or wuss[index] == '>':
+            dist -= 1
+        if dist > maxDist:
+            maxDist = dist
+
+    return maxDist
+
+# determine first note played by putting the whole sequence in 
+# the middle of the piano keyboard
+def findFirstNote(maxDist, notes):
+    firstNote = 0
+    octaveLow = 0
+    # never happens with 200 nucleotides
+    if maxDist > 127:
+        print('Memory issues :/')
+        sys.exit()
+    else:
+        # choose C chromatic scalee if notes of current scale are not enough
+        if len(notes) * 8 < maxDist:
+            notes = selectNotes('Chromatic', 0)
+        # |oooo|oooo|oooo|oooo|
+        firstPosition = int(maxDist + ((len(notes) * 8) - maxDist)/2)
+
+        octaLow = int(firstPosition / len(notes))
+        firstNote = notes[int(firstPosition % len(notes))]
+        
+    return firstNote, octaveLow
+
+if __name__ == '__main__':
+
+    # make RNA structures directory
+    if not os.path.exists('RNA structures/'):
+        os.makedirs('RNA structures/')
+
+    # if no arguments were passed or want to sonify something at random
+    if len(sys.argv) == 1 or sys.argv[1] == 'random':
+        filename = 'RNA structures/random.txt'
+        # create a random RNA structure with 100-200 nucleotides and 1-3 hairpin loops
+        wuss, numberOfLoops = randomRNA.createRandomRNAstructure(random.randint(100, 200), random.randint(1,3))
+        f = open('RNA structures/random.txt','w+')
+        f.write(wuss)
+        f.close()
+    else:
+        filename = 'RNA structures/' + sys.argv[1] + '.txt'
+
+    f = open(filename, 'r')
+    wuss = f.read()
+    f.close()
 
     # set mido stuff
     sendToPort, midiTrack, port, theMidiFile = initializeMido()
 
-    # create a random RNA structure with 100-200 nucleotides and 1-3 hairpin loops
-    wuss, numberOfLoops = randomRNA.createRandomRNAstructure(random.randint(100, 200),3)# random.randint(1,3))
-
     # calculate distance from beginning of branch for each nucleotide
     distances = randomRNA.findDistances(wuss)
+
+    notesNum = len(wuss)
 
     # strategies calculating the next note to be inputed in midi track
     strategies = {'(': 'Up', '<': 'Up', ')': 'Down', '>': 'Down', '_': 'Pause', ':': 'Pause',
                     '-' :'Stable', ',': 'Disharmony', '[': 'Pseudoknot', ']': 'Pseudoknot'}
     noteNames = {0:'C', 1:'Db', 2:'D', 3:'Eb', 4:'E', 5:'F', 6:'Gb', 7:'G', 8:'Ab', 9:'A', 10:'Bb', 11:'B'}
 
-    # choose scale
-    notes = selectNotes()
+    # choose a scale
+    notes = selectNotes('Minor', random.randint(0, 11))
 
     noteLength = int(1920/16) # 1920 = whole note
 
@@ -174,20 +240,21 @@ if __name__ == "__main__":
     octaveH = 8
     octaveL = 2
 
-    notesNum = len(wuss)
-
     # initialize shit
     prevNote = 0 # index of previous note of the scale of MIDI sequence
     prevOct = octaveL # previous octave of MIDI sequence
     
-    # input first note (the root note of the selected scale always)
-    inputNote(notes, notes[0], octaveL, noteLength, True, [0, 0, 0], sendToPort)
-    sendQuickMessage(mido.Message('aftertouch', value = 0), port)
+    # maxDist = findMaxNoteDistance(wuss)
+    # prevNote, prevOct = findFirstNote(maxDist, notes)
+    # print('First note:', prevNote)
+
+    # # input first note (the root note of the selected scale always)
+    # inputNote(notes, prevNote, octaveL, noteLength, True, [0, 0, 0], sendToPort)
 
     # pseudoknots midi track
-    midiTrack2 = mido.MidiTrack()
-    theMidiFile2 = mido.MidiFile()
-    theMidiFile2.tracks.append(midiTrack2)
+    midiTrackPK = mido.MidiTrack()
+    theMidiFilePK = mido.MidiFile()
+    theMidiFilePK.tracks.append(midiTrackPK)
     # initialize previous to first pseudoknot note to input
     prevPKnote = notes[0] + (octaveL + 2)*12 - 7
 
@@ -197,31 +264,24 @@ if __name__ == "__main__":
         # starting state for all nucleotides: play one note with no intervals added
         willNotePlay = True
         intervals = [0, 0, 0]
-        hasSeenPK = False
-        
-        # send control change depending on distance
-        sendQuickMessage(mido.Message('control_change', control = 20, value = distances[index]), port)    
 
-        # add increments for base pairs
-        if wuss[index] == '-':
+        # add increments in start end positions of interior loops
+        if wuss[index] == '-' and wuss[index + 1] != '-':
             intervals = [2, -2, 4]
 
-        # add midi control changes and octaves in closing helix
-        if wuss[index] == '(':
-            sendQuickMessage(mido.Message('aftertouch', value = 0), port)
-            # add octaves in beginning and end of closing helix
-            if wuss[index + 1] != '(':
-                intervals = [2*len(notes), 3*len(notes), 4*len(notes)]
-        elif wuss[index] == ')':
-            sendQuickMessage(mido.Message('aftertouch', value = 127), port)
-            # add octaves in beginning and end of closing helix
-            if wuss[index - 1] != ')':
-                intervals = [2*len(notes), 3*len(notes), 4*len(notes)]
-        else:
-            sendQuickMessage(mido.Message('aftertouch', value = 63), port)
+        # add octaves in start end positions of helix
+        if wuss[index] == '(' and  wuss[index + 1] != '(':
+            intervals = [2*len(notes), 3*len(notes), 4*len(notes)]
+        elif wuss[index] == ')' and wuss[index - 1] != ')':
+            intervals = [2*len(notes), 3*len(notes), 4*len(notes)]
         
         # select strategy depending on how the nucleotide is structured
         playMode = strategies[wuss[index]]
+        # exception for first after loop
+        if wuss[index - 1] == '_' and wuss[index] != '_':
+            # exception for pseudoknots
+            if wuss[index] != '[' and wuss[index] != ']':
+                playMode = 'Stable' 
 
         # select note to play depending on strategy   
         if playMode == 'Up':
@@ -276,6 +336,9 @@ if __name__ == "__main__":
         
         elif playMode == 'Pseudoknot':
             willNotePlay = False
+            # send main melody velocity to channel 
+            port.send(mido.Message('note_on', velocity = 127, channel = 4))
+
             if wuss[index] == '[':
                 # add 5th from previous PK note
                 PKnote = prevPKnote + 7
@@ -286,19 +349,16 @@ if __name__ == "__main__":
                     # subtract 4th from previous PK note
                     PKnote = prevPKnote - 7
             prevPKnote = PKnote
-            midiTrack2.append(mido.Message('note_on', note = PKnote, time = noteLength))
-            # midiTrack2.append(mido.Message('note_off', time = noteLength))
+            midiTrackPK.append(mido.Message('note_on', note = PKnote, time = noteLength))
+            # midiTrackPK.append(mido.Message('note_off', time = noteLength))
             if wuss[index] == ']':
-                midiTrack2.append(mido.Message('note_off', note = PKnote, time = noteLength))
+                midiTrackPK.append(mido.Message('note_off', note = PKnote, time = noteLength))
             if sendToPort:
-                port.send(mido.Message('note_on', note = PKnote, channel = 1))
-                if wuss[index] == ']':
-                    time.sleep(sendToPort)
-                    port.send(mido.Message('note_off', note = PKnote, channel = 1))
+                port.send(mido.Message('note_on', note = PKnote, channel = 1, velocity = 127))
       
         # pause pseudoknot tracks
         if playMode != 'Pseudoknot':
-            midiTrack2.append(mido.Message('note_off', time = noteLength))
+            midiTrackPK.append(mido.Message('note_off', time = noteLength))
 
         # scale play in range (octave, octave + 1) so that root note is always 1st
         if noteToInput < notes[0]:
@@ -308,10 +368,29 @@ if __name__ == "__main__":
         inputNote(notes, noteToInput, octaveToInput, noteLength, 
                                 willNotePlay, intervals, sendToPort)        
 
+        # send control change depending on position
+        # midi CC 21: pan
+        if index == 0:
+            panValue = 0
+        elif index == notesNum - 1:
+            panValue = 1
+        else:
+            panValue = index / notesNum # map linearly to 0-1
+            panValue = 1 / (1 + math.exp(-10*(panValue - 0.5))) # transform to sigmoid (scale factor 10)
+        panValue = int(round(panValue * 127, 0)) # remap to 0-127
+        sendQuickMessage(mido.Message('control_change', control = 21, value = panValue), port)
+
+        # send control change depending on distance
+        # midi CC 20: distances
+        sendQuickMessage(mido.Message('control_change', control = 20, value = distances[index]), port)
+  
+
     # close midi ports
     if sendToPort:
         port.close()
 
-    # save midi file
-    theMidiFile.save('thisIsAnRNAstructure.mid')
-    theMidiFile2.save('thisIsAnRNAstructurePKs.mid')
+    # save midi files to 'MIDI files' folder
+    if not os.path.exists('MIDI files/'):
+        os.makedirs('MIDI files/')
+    theMidiFile.save('MIDI files/thisIsAnRNAstructure.mid')
+    theMidiFilePK.save('MIDI files/thisIsAnRNAstructurePKs.mid')
