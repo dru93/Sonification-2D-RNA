@@ -1,4 +1,4 @@
-# Sonification of secondary RNA structure
+# Sonification of RNA secondary structure
 
 Pure Data and Ableton Live are optionally required. Check:
 - [https://puredata.info](https://puredata.info/)
@@ -57,4 +57,4 @@ This MIDI information dictates the sounds that will play depending on the RNA se
 4. Playback MIDI info
 5. Record/explore audio
 
-![Pure data patch](/images/pdPatch.PNG)
+![Pure data patch](/images/pdPatch.png)
