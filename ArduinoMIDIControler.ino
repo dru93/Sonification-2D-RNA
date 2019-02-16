@@ -1,10 +1,9 @@
 /*
-liraries:
 MIDI_controller-3.1.0
 MIDIUSB
 */
 
-#include <MIDI_Controller.h> // Include the library
+#include <MIDI_Controller.h>
 
 // Create a new instance of the class 'Analog', called 'potentiometer-', on A0-A2, 
 // that send MIDI messages with controller 1-3 (channel volume) on channel 9
