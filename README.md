@@ -35,10 +35,10 @@ This MIDI information dictates the sounds that will play depending on the RNA se
 
 | CSSD symbol | Nucleobase         | Pitch         |
 | :--------:  |:------------------:| :------------:|
-| `(`         | helix opening      | pitch up      |
-| `)`         | helix closing      | pitch down    |
-| `<`         | base pair opening  | pitch up      |
-| `>`         | base pair closing  | pitch down    |
+| `(`         | helix opening      | up            |
+| `)`         | helix closing      | down          |
+| `<`         | base pair opening  | up            |
+| `>`         | base pair closing  | down          |
 | `[`         | pseudoknot opening | arpeggio up   |
 | `]`         | pseudoknot closing | arpeggio down |
 | `-`         | interior loop      | stay idle     |
