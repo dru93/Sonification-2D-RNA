@@ -38,7 +38,7 @@ This MIDI information dictates the sounds that will play depending on the RNA se
 
 ### Pitch frequency
 
-| CSSD symbol | Nucleobase         | Pitch            |
+| CSSD        | Nucleobase         | Pitch            |
 |:-----------:|:------------------:|:----------------:|
 | `(`         | helix opening      | up               |
 | `)`         | helix closing      | down             |
