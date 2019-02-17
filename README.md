@@ -25,7 +25,7 @@ This MIDI information dictates the sounds that will play depending on the RNA se
 
 1. Open Pure Data and load `sonification-template.pd`, or open Ableton Live and load `sonification-template.als`
 
-2. Run `python createMID.py` in a terminal.
+2. Run `python createMIDI.py` in a terminal.
    <br/>
    If there are no input arguments, a random  RNA secondary structure in CSSD format will be created (`randomRNA.py` is called), else you can input as an argument any specific .txt file located in the 'RNA structures' directory you want to sonify.
    <br/>
@@ -46,16 +46,16 @@ This MIDI information dictates the sounds that will play depending on the RNA se
 | `>`         | base pair closing  | down             |
 | `[`         | pseudoknot opening | arpeggio up      |
 | `]`         | pseudoknot closing | arpeggio down    |
-| `-`         | interior loop      | pause            |
-| `_`         | hairpin loop       | chord & repeat   |
-| `,`         | unpairing          | dissonance/random|
+| `_`         | hairpin loop       | pause            |
+| `:`         | unstructured       | pause            |
+| `-`         | interior loop      | chord & repeat   |
+| `,`         | unpaired           | dissonance/random|
 
 ### Space
 
-- Sound direction: Depending on sequence index
+- Sound direction: mapped to sequence index
+- Reverberation: mapped to index distance from center
   
-- Reverb: Depending on index distance from structure center
-
 ## Pure Data patch
 
 1. Record MIDI
